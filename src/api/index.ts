@@ -13,7 +13,7 @@ import {
 import { useCache, cacheKey } from '@/composables/useCache'
 
 const USE_MOCK = true
-const { withCache, isOnline } = useCache()
+const { withCache, isOnline, removeCache, invalidateCacheByPrefix } = useCache()
 
 const api = axios.create({
   baseURL: '/api',
@@ -55,13 +55,21 @@ export const userApi = {
   },
   
   async followUser(userId: string): Promise<void> {
-    if (USE_MOCK) return Promise.resolve()
-    return api.post(`/user/${userId}/follow`)
+    if (USE_MOCK) {
+      removeCache(cacheKey.user(userId))
+      return Promise.resolve()
+    }
+    await api.post(`/user/${userId}/follow`)
+    removeCache(cacheKey.user(userId))
   },
   
   async unfollowUser(userId: string): Promise<void> {
-    if (USE_MOCK) return Promise.resolve()
-    return api.delete(`/user/${userId}/follow`)
+    if (USE_MOCK) {
+      removeCache(cacheKey.user(userId))
+      return Promise.resolve()
+    }
+    await api.delete(`/user/${userId}/follow`)
+    removeCache(cacheKey.user(userId))
   }
 }
 
@@ -177,9 +185,15 @@ export const tastingApi = {
         commentsCount: 0
       }
       mockTastingRecords.unshift(newRecord)
+      invalidateCacheByPrefix('feed_')
+      invalidateCacheByPrefix('user_records_')
+      removeCache(cacheKey.stats(currentUser.id))
       return Promise.resolve(newRecord)
     }
-    return api.post('/tasting', params)
+    const result = await api.post<any, TastingRecord>('/tasting', params)
+    invalidateCacheByPrefix('feed_')
+    invalidateCacheByPrefix('user_records_')
+    return result
   },
   
   async likeRecord(recordId: string): Promise<void> {
@@ -189,9 +203,15 @@ export const tastingApi = {
         record.isLiked = !record.isLiked
         record.likes += record.isLiked ? 1 : -1
       }
+      invalidateCacheByPrefix('feed_')
+      invalidateCacheByPrefix('user_records_')
+      removeCache(cacheKey.tastingRecord(recordId))
       return Promise.resolve()
     }
-    return api.post(`/tasting/${recordId}/like`)
+    await api.post(`/tasting/${recordId}/like`)
+    invalidateCacheByPrefix('feed_')
+    invalidateCacheByPrefix('user_records_')
+    removeCache(cacheKey.tastingRecord(recordId))
   },
   
   async addComment(recordId: string, content: string): Promise<Comment> {
@@ -207,9 +227,16 @@ export const tastingApi = {
       }
       record.comments.push(newComment)
       record.commentsCount++
+      invalidateCacheByPrefix('feed_')
+      invalidateCacheByPrefix('user_records_')
+      removeCache(cacheKey.tastingRecord(recordId))
       return Promise.resolve(newComment)
     }
-    return api.post(`/tasting/${recordId}/comment`, { content })
+    const result = await api.post<any, Comment>(`/tasting/${recordId}/comment`, { content })
+    invalidateCacheByPrefix('feed_')
+    invalidateCacheByPrefix('user_records_')
+    removeCache(cacheKey.tastingRecord(recordId))
+    return result
   }
 }
 
@@ -249,9 +276,14 @@ export const wineListApi = {
         isLiked: false
       }
       mockWineLists.unshift(newList)
+      invalidateCacheByPrefix('lists_')
+      invalidateCacheByPrefix('user_lists_')
       return Promise.resolve(newList)
     }
-    return api.post('/lists', params)
+    const result = await api.post<any, WineList>('/lists', params)
+    invalidateCacheByPrefix('lists_')
+    invalidateCacheByPrefix('user_lists_')
+    return result
   },
   
   async updateWineList(id: string, params: { title?: string, description?: string, wineIds?: string[], coverImage?: string }): Promise<WineList> {
@@ -264,9 +296,16 @@ export const wineListApi = {
       if (params.wineIds) {
         list.wines = params.wineIds.map(wid => getWineById(wid)!).filter(Boolean)
       }
+      invalidateCacheByPrefix('lists_')
+      invalidateCacheByPrefix('user_lists_')
+      removeCache(cacheKey.wineList(id))
       return Promise.resolve(list)
     }
-    return api.put(`/lists/${id}`, params)
+    const result = await api.put<any, WineList>(`/lists/${id}`, params)
+    invalidateCacheByPrefix('lists_')
+    invalidateCacheByPrefix('user_lists_')
+    removeCache(cacheKey.wineList(id))
+    return result
   },
   
   async addWineToList(listId: string, wineId: string): Promise<WineList> {
@@ -278,18 +317,31 @@ export const wineListApi = {
       if (!list.wines.find(w => w.id === wineId)) {
         list.wines.push(wine)
       }
+      invalidateCacheByPrefix('lists_')
+      invalidateCacheByPrefix('user_lists_')
+      removeCache(cacheKey.wineList(listId))
       return Promise.resolve(list)
     }
-    return api.post(`/lists/${listId}/wines`, { wineId })
+    const result = await api.post<any, WineList>(`/lists/${listId}/wines`, { wineId })
+    invalidateCacheByPrefix('lists_')
+    invalidateCacheByPrefix('user_lists_')
+    removeCache(cacheKey.wineList(listId))
+    return result
   },
   
   async deleteWineList(id: string): Promise<void> {
     if (USE_MOCK) {
       const index = mockWineLists.findIndex(l => l.id === id)
       if (index > -1) mockWineLists.splice(index, 1)
+      invalidateCacheByPrefix('lists_')
+      invalidateCacheByPrefix('user_lists_')
+      removeCache(cacheKey.wineList(id))
       return Promise.resolve()
     }
-    return api.delete(`/lists/${id}`)
+    await api.delete(`/lists/${id}`)
+    invalidateCacheByPrefix('lists_')
+    invalidateCacheByPrefix('user_lists_')
+    removeCache(cacheKey.wineList(id))
   },
   
   async likeWineList(listId: string): Promise<void> {
@@ -299,9 +351,15 @@ export const wineListApi = {
         list.isLiked = !list.isLiked
         list.likes += list.isLiked ? 1 : -1
       }
+      invalidateCacheByPrefix('lists_')
+      invalidateCacheByPrefix('user_lists_')
+      removeCache(cacheKey.wineList(listId))
       return Promise.resolve()
     }
-    return api.post(`/lists/${listId}/like`)
+    await api.post(`/lists/${listId}/like`)
+    invalidateCacheByPrefix('lists_')
+    invalidateCacheByPrefix('user_lists_')
+    removeCache(cacheKey.wineList(listId))
   }
 }
 

@@ -40,9 +40,7 @@ watch(() => route.fullPath, (to, from) => {
   }
 })
 
-onMounted(() => {
-  userStore.fetchCurrentUser()
-})
+
 </script>
 
 <style>

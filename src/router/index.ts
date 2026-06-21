@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useUserStore } from '@/stores'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -88,8 +89,23 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to, _from, next) => {
+let userInitialized = false
+
+router.beforeEach(async (to, _from, next) => {
   document.title = (to.meta.title as string) || '酒友'
+  
+  if (!userInitialized) {
+    try {
+      const userStore = useUserStore()
+      if (!userStore.currentUser) {
+        await userStore.fetchCurrentUser()
+      }
+      userInitialized = true
+    } catch (e) {
+      console.error('Failed to initialize user:', e)
+    }
+  }
+  
   next()
 })
 

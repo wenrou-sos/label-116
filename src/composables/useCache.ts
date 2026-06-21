@@ -90,6 +90,19 @@ export function useCache() {
     }
   }
 
+  const invalidateCacheByPrefix = (prefix: string): void => {
+    try {
+      const keys = Object.keys(localStorage)
+      keys.forEach(key => {
+        if (key.startsWith(CACHE_PREFIX + prefix)) {
+          localStorage.removeItem(key)
+        }
+      })
+    } catch (e) {
+      console.warn('Invalidate cache by prefix failed:', e)
+    }
+  }
+
   const withCache = async <T>(
     key: string,
     fetchFn: () => Promise<T>,
@@ -138,6 +151,7 @@ export function useCache() {
     removeCache,
     clearAllCache,
     clearExpiredCache,
+    invalidateCacheByPrefix,
     withCache
   }
 }

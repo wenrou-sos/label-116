@@ -141,17 +141,47 @@ export const useTastingStore = defineStore('tasting', () => {
   const total = ref(0)
   const loading = ref(false)
 
+  const mergeRecordModifications = (
+    fetchedRecords: TastingRecord[],
+    localMap: Map<string, TastingRecord>
+  ): TastingRecord[] => {
+    return fetchedRecords.map(fetched => {
+      const local = localMap.get(fetched.id)
+      if (!local) return fetched
+      let hasChanges = false
+      const merged: TastingRecord = { ...fetched }
+      if (local.isLiked !== fetched.isLiked) {
+        merged.isLiked = local.isLiked
+        hasChanges = true
+      }
+      if (local.likes !== fetched.likes) {
+        merged.likes = local.likes
+        hasChanges = true
+      }
+      if (local.commentsCount !== fetched.commentsCount || local.comments.length !== fetched.comments.length) {
+        merged.comments = local.comments
+        merged.commentsCount = local.commentsCount
+        hasChanges = true
+      }
+      return hasChanges ? merged : fetched
+    })
+  }
+
   const fetchFeed = async (page: number = 1, pageSize: number = 10) => {
     loading.value = true
     try {
+      const localFeedMap = new Map(feedRecords.value.map(r => [r.id, r]))
       const result = await tastingApi.getFeed(page, pageSize)
+      const mergedRecords = mergeRecordModifications(result.records, localFeedMap)
       if (page === 1) {
-        feedRecords.value = result.records
+        feedRecords.value = mergedRecords
       } else {
-        feedRecords.value = [...feedRecords.value, ...result.records]
+        const existingIds = new Set(feedRecords.value.map(r => r.id))
+        const newOnes = mergedRecords.filter(r => !existingIds.has(r.id))
+        feedRecords.value = [...feedRecords.value, ...newOnes]
       }
       total.value = result.total
-      return result
+      return { ...result, records: page === 1 ? mergedRecords : result.records }
     } finally {
       loading.value = false
     }
@@ -160,7 +190,9 @@ export const useTastingStore = defineStore('tasting', () => {
   const fetchMyRecords = async (userId: string) => {
     loading.value = true
     try {
-      myRecords.value = await tastingApi.getMyTastingRecords(userId)
+      const localMyMap = new Map(myRecords.value.map(r => [r.id, r]))
+      const fetched = await tastingApi.getMyTastingRecords(userId)
+      myRecords.value = mergeRecordModifications(fetched, localMyMap)
       return myRecords.value
     } finally {
       loading.value = false
@@ -170,7 +202,15 @@ export const useTastingStore = defineStore('tasting', () => {
   const fetchRecordById = async (id: string) => {
     loading.value = true
     try {
-      currentRecord.value = await tastingApi.getTastingRecord(id)
+      const fetched = await tastingApi.getTastingRecord(id)
+      let merged = fetched
+      const localFeed = feedRecords.value.find(r => r.id === id)
+      const localMy = myRecords.value.find(r => r.id === id)
+      const local = localFeed || localMy
+      if (local) {
+        merged = mergeRecordModifications([fetched], new Map([[id, local]]))[0]
+      }
+      currentRecord.value = merged
       return currentRecord.value
     } finally {
       loading.value = false
@@ -248,17 +288,55 @@ export const useWineListStore = defineStore('wineList', () => {
   const total = ref(0)
   const loading = ref(false)
 
+  const mergeListModifications = (
+    fetchedLists: WineList[],
+    localMap: Map<string, WineList>
+  ): WineList[] => {
+    return fetchedLists.map(fetched => {
+      const local = localMap.get(fetched.id)
+      if (!local) return fetched
+      let hasChanges = false
+      const merged: WineList = { ...fetched }
+      if (local.isLiked !== fetched.isLiked) {
+        merged.isLiked = local.isLiked
+        hasChanges = true
+      }
+      if (local.likes !== fetched.likes) {
+        merged.likes = local.likes
+        hasChanges = true
+      }
+      if (local.wines.length !== fetched.wines.length) {
+        merged.wines = local.wines
+        hasChanges = true
+      }
+      if (local.coverImage !== fetched.coverImage) {
+        merged.coverImage = local.coverImage
+        hasChanges = true
+      }
+      if (local.title !== fetched.title || local.description !== fetched.description) {
+        merged.title = local.title
+        merged.description = local.description
+        hasChanges = true
+      }
+      return hasChanges ? merged : fetched
+    })
+  }
+
   const fetchWineLists = async (page: number = 1, pageSize: number = 10) => {
     loading.value = true
     try {
+      const localMap = new Map(wineLists.value.map(l => [l.id, l]))
       const result = await wineListApi.getWineLists(page, pageSize)
+      const mergedLists = mergeListModifications(result.lists, localMap)
       if (page === 1) {
-        wineLists.value = result.lists
+        wineLists.value = mergedLists
       } else {
-        wineLists.value = [...wineLists.value, ...result.lists]
+        const existingIds = new Set(wineLists.value.map(l => l.id))
+        const newOnes = mergedLists.filter(l => !existingIds.has(l.id))
+        wineLists.value = [...wineLists.value, ...newOnes]
       }
       total.value = result.total
-      return result
+      return { ...result, lists: page === 1 ? mergedLists : result.lists }
     } finally {
       loading.value = false
     }
@@ -267,7 +345,9 @@ export const useWineListStore = defineStore('wineList', () => {
   const fetchMyWineLists = async (userId: string) => {
     loading.value = true
     try {
-      myWineLists.value = await wineListApi.getMyWineLists(userId)
+      const localMap = new Map(myWineLists.value.map(l => [l.id, l]))
+      const fetched = await wineListApi.getMyWineLists(userId)
+      myWineLists.value = mergeListModifications(fetched, localMap)
       return myWineLists.value
     } finally {
       loading.value = false
@@ -277,7 +357,15 @@ export const useWineListStore = defineStore('wineList', () => {
   const fetchListById = async (id: string) => {
     loading.value = true
     try {
-      currentList.value = await wineListApi.getWineListById(id)
+      const fetched = await wineListApi.getWineListById(id)
+      let merged = fetched
+      const localAll = wineLists.value.find(l => l.id === id)
+      const localMy = myWineLists.value.find(l => l.id === id)
+      const local = localAll || localMy
+      if (local) {
+        merged = mergeListModifications([fetched], new Map([[id, local]]))[0]
+      }
+      currentList.value = merged
       return currentList.value
     } finally {
       loading.value = false
