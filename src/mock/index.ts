@@ -3,6 +3,7 @@ export * from './wines'
 export * from './tastingRecords'
 export * from './wineLists'
 export * from './notifications'
+export * from './achievements'
 
 import type { RegionStats } from '@/types'
 

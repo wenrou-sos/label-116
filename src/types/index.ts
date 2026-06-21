@@ -112,3 +112,51 @@ export interface Notification {
   isRead: boolean
   createdAt: string
 }
+
+export type AchievementCategory = 'tasting' | 'type' | 'list' | 'social' | 'region'
+
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: AchievementCategory
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  condition: {
+    type: 'tastingCount' | 'typeCoverage' | 'listCount' | 'totalLikes' | 'regionCount'
+    target: number
+    wineType?: string
+  }
+  unlockedAt?: string
+}
+
+export interface LevelInfo {
+  level: number
+  title: string
+  minExp: number
+  maxExp: number
+  color: string
+  icon: string
+}
+
+export interface UserProgress {
+  userId: string
+  currentExp: number
+  currentLevel: number
+  tastingCount: number
+  uniqueWineTypes: string[]
+  listCount: number
+  totalLikes: number
+  regionCount: number
+  unlockedAchievementIds: string[]
+  recentlyUnlocked: string[]
+}
+
+export interface AchievementProgress {
+  achievement: Achievement
+  current: number
+  target: number
+  progress: number
+  unlocked: boolean
+  unlockedAt?: string
+}

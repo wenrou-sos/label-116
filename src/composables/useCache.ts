@@ -171,5 +171,10 @@ export const cacheKey = {
   popularWines: 'popular_wines',
   topRatedWines: 'top_rated_wines',
   notifications: () => `notifications_list`,
-  unreadCount: () => `notifications_unread_count`
+  unreadCount: () => `notifications_unread_count`,
+  userProgress: (userId: string) => `user_progress_${userId}`,
+  achievements: () => `achievements_all`,
+  levels: () => `achievements_levels`,
+  levelInfo: (level: number) => `achievements_level_${level}`,
+  achievementProgress: (userId: string) => `achievement_progress_${userId}`
 }

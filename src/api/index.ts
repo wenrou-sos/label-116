@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { 
   User, Wine, TastingRecord, WineList, 
-  CreateTastingParams, RegionStats, Comment, Notification
+  CreateTastingParams, RegionStats, Comment, Notification,
+  Achievement, LevelInfo, UserProgress, AchievementProgress
 } from '@/types'
 import { 
   mockUsers, currentUser, mockWines, mockTastingRecords, 
@@ -10,7 +11,9 @@ import {
   getWinesByVariety, getPopularWines, getTopRatedWines,
   getWineLists, getMyWineLists, getWineListById,
   getNotifications, markNotificationRead, markAllNotificationsRead,
-  deleteNotification, getUnreadCount, createNotification
+  deleteNotification, getUnreadCount, createNotification,
+  getUserProgress, getAllAchievements, getLevels, getLevelInfo,
+  addExpForAction
 } from '@/mock'
 import { useCache, cacheKey } from '@/composables/useCache'
 
@@ -500,6 +503,91 @@ export const notificationApi = {
     }
     const result = await api.post<any, Notification>('/notifications', params)
     invalidateCacheByPrefix('notifications_')
+    return result
+  }
+}
+
+export const achievementApi = {
+  async getUserProgress(userId: string): Promise<UserProgress | null> {
+    if (USE_MOCK) {
+      const p = getUserProgress(userId)
+      return Promise.resolve(p || null)
+    }
+    return withCache(cacheKey.userProgress(userId), () => api.get(`/achievements/progress/${userId}`))
+  },
+
+  async getAllAchievements(): Promise<Achievement[]> {
+    if (USE_MOCK) return Promise.resolve(getAllAchievements())
+    return withCache(cacheKey.achievements(), () => api.get('/achievements'))
+  },
+
+  async getLevels(): Promise<LevelInfo[]> {
+    if (USE_MOCK) return Promise.resolve(getLevels())
+    return withCache(cacheKey.levels(), () => api.get('/achievements/levels'))
+  },
+
+  async getLevelInfo(level: number): Promise<LevelInfo | null> {
+    if (USE_MOCK) {
+      const info = getLevelInfo(level)
+      return Promise.resolve(info || null)
+    }
+    return withCache(cacheKey.levelInfo(level), () => api.get(`/achievements/levels/${level}`))
+  },
+
+  async getAchievementProgress(userId: string): Promise<AchievementProgress[]> {
+    if (USE_MOCK) {
+      const progress = getUserProgress(userId)
+      const allAchievements = getAllAchievements()
+      if (!progress) return Promise.resolve([])
+
+      const result = allAchievements.map(ach => {
+        let current = 0
+        switch (ach.condition.type) {
+          case 'tastingCount':
+            current = progress.tastingCount
+            break
+          case 'typeCoverage':
+            current = progress.uniqueWineTypes.length
+            break
+          case 'listCount':
+            current = progress.listCount
+            break
+          case 'totalLikes':
+            current = progress.totalLikes
+            break
+          case 'regionCount':
+            current = progress.regionCount
+            break
+        }
+        const unlocked = progress.unlockedAchievementIds.includes(ach.id)
+        return {
+          achievement: unlocked ? { ...ach, unlockedAt: ach.unlockedAt } : ach,
+          current: Math.min(current, ach.condition.target),
+          target: ach.condition.target,
+          progress: Math.min(1, current / ach.condition.target),
+          unlocked,
+          unlockedAt: ach.unlockedAt
+        } as AchievementProgress
+      })
+      return Promise.resolve(result)
+    }
+    return withCache(cacheKey.achievementProgress(userId), () => api.get(`/achievements/progress-list/${userId}`))
+  },
+
+  async addExp(userId: string, expAmount: number): Promise<{
+    newLevel: boolean
+    levelInfo?: LevelInfo
+    newAchievements: Achievement[]
+  }> {
+    if (USE_MOCK) {
+      const result = addExpForAction(userId, expAmount)
+      invalidateCacheByPrefix('user_progress_')
+      invalidateCacheByPrefix('achievement_progress_')
+      return Promise.resolve(result)
+    }
+    const result = await api.post<any, any>(`/achievements/add-exp`, { userId, expAmount })
+    invalidateCacheByPrefix('user_progress_')
+    invalidateCacheByPrefix('achievement_progress_')
     return result
   }
 }

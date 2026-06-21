@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
 import { defineStore } from 'pinia'
-import type { User, Wine, TastingRecord, WineList, CreateTastingParams, RegionStats, Comment, Notification } from '@/types'
-import { userApi, wineApi, tastingApi, wineListApi, statsApi, notificationApi } from '@/api'
+import type { User, Wine, TastingRecord, WineList, CreateTastingParams, RegionStats, Comment, Notification, Achievement, LevelInfo, UserProgress, AchievementProgress } from '@/types'
+import { userApi, wineApi, tastingApi, wineListApi, statsApi, notificationApi, achievementApi } from '@/api'
 import { ref, computed } from 'vue'
 
 export const pinia = createPinia()
@@ -709,5 +709,139 @@ export const useNotificationStore = defineStore('notification', () => {
     markAsRead,
     markAllAsRead,
     removeNotification
+  }
+})
+
+export const useAchievementStore = defineStore('achievement', () => {
+  const userProgress = ref<UserProgress | null>(null)
+  const achievements = ref<Achievement[]>([])
+  const achievementProgress = ref<AchievementProgress[]>([])
+  const levels = ref<LevelInfo[]>([])
+  const loading = ref(false)
+
+  const currentLevelInfo = computed(() => {
+    if (!userProgress.value) return undefined
+    return levels.value.find(l => l.level === userProgress.value!.currentLevel)
+  })
+
+  const nextLevelInfo = computed(() => {
+    if (!userProgress.value) return undefined
+    return levels.value.find(l => l.level === userProgress.value!.currentLevel + 1)
+  })
+
+  const levelProgress = computed(() => {
+    if (!userProgress.value || !currentLevelInfo.value) return 0
+    const cur = currentLevelInfo.value
+    const total = cur.maxExp - cur.minExp
+    const done = userProgress.value.currentExp - cur.minExp
+    return Math.min(1, Math.max(0, done / total))
+  })
+
+  const unlockedAchievements = computed(() =>
+    achievementProgress.value.filter(p => p.unlocked)
+  )
+
+  const unlockedCount = computed(() => unlockedAchievements.value.length)
+
+  const totalCount = computed(() => achievements.value.length)
+
+  const recentlyUnlockedAchievements = computed(() => {
+    if (!userProgress.value) return []
+    return achievementProgress.value
+      .filter(p => userProgress.value!.recentlyUnlocked.includes(p.achievement.id))
+      .sort((a, b) => {
+        const timeA = a.unlockedAt ? new Date(a.unlockedAt).getTime() : 0
+        const timeB = b.unlockedAt ? new Date(b.unlockedAt).getTime() : 0
+        return timeB - timeA
+      })
+  })
+
+  const achievementsByCategory = computed(() => {
+    const groups: Record<string, AchievementProgress[]> = {
+      tasting: [],
+      type: [],
+      list: [],
+      social: [],
+      region: []
+    }
+    achievementProgress.value.forEach(p => {
+      groups[p.achievement.category]?.push(p)
+    })
+    return groups
+  })
+
+  const fetchUserProgress = async (userId: string, forceRefresh = false) => {
+    if (!forceRefresh && userProgress.value?.userId === userId) return
+    loading.value = true
+    try {
+      userProgress.value = await achievementApi.getUserProgress(userId)
+      if (levels.value.length === 0) {
+        levels.value = await achievementApi.getLevels()
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchAllAchievements = async (forceRefresh = false) => {
+    if (!forceRefresh && achievements.value.length > 0) return
+    loading.value = true
+    try {
+      achievements.value = await achievementApi.getAllAchievements()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchAchievementProgress = async (userId: string, forceRefresh = false) => {
+    loading.value = true
+    try {
+      achievementProgress.value = await achievementApi.getAchievementProgress(userId)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const addExp = async (userId: string, expAmount: number) => {
+    const result = await achievementApi.addExp(userId, expAmount)
+    if (userProgress.value?.userId === userId) {
+      await fetchUserProgress(userId, true)
+      await fetchAchievementProgress(userId, true)
+    }
+    return result
+  }
+
+  const loadAllForUser = async (userId: string) => {
+    loading.value = true
+    try {
+      await Promise.all([
+        fetchAllAchievements(),
+        fetchUserProgress(userId, true),
+        fetchAchievementProgress(userId, true)
+      ])
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    userProgress,
+    achievements,
+    achievementProgress,
+    levels,
+    loading,
+    currentLevelInfo,
+    nextLevelInfo,
+    levelProgress,
+    unlockedAchievements,
+    unlockedCount,
+    totalCount,
+    recentlyUnlockedAchievements,
+    achievementsByCategory,
+    fetchUserProgress,
+    fetchAllAchievements,
+    fetchAchievementProgress,
+    addExp,
+    loadAllForUser
   }
 })

@@ -11,6 +11,28 @@
         <van-icon name="setting-o" size="22" color="#fff" class="settings" />
       </div>
       
+      <div class="level-card" @click="goToAchievements">
+        <div class="level-info-row">
+          <div class="level-icon">{{ levelInfo?.icon || '🌱' }}</div>
+          <div class="level-info-text">
+            <div class="level-title">
+              <span class="level-num">Lv.{{ currentLevel }}</span>
+              <span class="level-name" :style="{ color: levelInfo?.color }">{{ levelInfo?.title || '新手酒客' }}</span>
+            </div>
+            <div class="exp-bar-mini">
+              <div class="exp-fill-mini" :style="{ width: `${Math.round(levelProgressPercent)}%`, background: levelInfo?.color || '#95A5A6' }" />
+              <span class="exp-text-mini">
+                {{ expInLevel }} / {{ expNeeded }} EXP
+              </span>
+            </div>
+            <div v-if="nextLevelInfo" class="next-hint">
+              还差 <strong style="color:#F5A623">{{ remainingExp }}</strong> 升级到 {{ nextLevelInfo.title }}
+            </div>
+          </div>
+          <ChevronRight :size="20" color="rgba(255,255,255,0.6)" />
+        </div>
+      </div>
+      
       <div class="stats-row">
         <div class="stat-item">
           <div class="stat-value">{{ statsStore.totalTastingsCount }}</div>
@@ -39,10 +61,47 @@
           </div>
           <van-icon name="arrow" size="16" color="rgba(255,255,255,0.5)" />
         </div>
+        <div class="action-item" @click="goToAchievements">
+          <div class="action-icon" style="background: linear-gradient(135deg, rgba(155, 89, 182, 0.4) 0%, rgba(142, 68, 173, 0.4) 100%);">🏆</div>
+          <div class="action-text">
+            <div class="action-title">成就中心</div>
+            <div class="action-desc">已解锁 {{ achievementStore.unlockedCount }}/{{ achievementStore.totalCount }} 个成就</div>
+          </div>
+          <van-icon name="arrow" size="16" color="rgba(255,255,255,0.5)" />
+        </div>
       </div>
     </div>
     
     <div class="content">
+      <div class="section achievements-preview">
+        <div class="section-header">
+          <div class="section-title">
+            <Award :size="18" color="#8B4513" />
+            我的成就
+          </div>
+          <div class="section-action" @click="goToAchievements">查看全部</div>
+        </div>
+        <div v-if="unlockedPreview.length > 0" class="achievements-grid">
+          <AchievementBadge
+            v-for="item in unlockedPreview"
+            :key="item.achievement.id"
+            :achievement="item.achievement"
+            :unlocked="true"
+            size="small"
+            :show-glow="item.achievement.rarity === 'legendary' || item.achievement.rarity === 'epic'"
+            class="preview-badge"
+          />
+          <div
+            v-for="i in (6 - unlockedPreview.length)"
+            :key="'empty-' + i"
+            class="preview-badge empty-slot"
+          >
+            <Lock :size="20" color="rgba(255,255,255,0.3)" />
+          </div>
+        </div>
+        <Empty v-else description="暂无已解锁成就" class="empty-sm" />
+      </div>
+
       <div class="section">
         <div class="section-header">
           <div class="section-title">
@@ -176,18 +235,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore, useTastingStore, useWineListStore, useStatsStore } from '@/stores'
+import { useUserStore, useTastingStore, useWineListStore, useStatsStore, useAchievementStore } from '@/stores'
 import { regionStats } from '@/mock'
 import type { TastingRating } from '@/types'
 import StarRating from '@/components/StarRating.vue'
 import WineListCard from '@/components/WineListCard.vue'
 import Empty from '@/components/Empty.vue'
+import AchievementBadge from '@/components/AchievementBadge.vue'
+import { ChevronRight, Award, Lock } from 'lucide-vue-next'
 
 const router = useRouter()
 const userStore = useUserStore()
 const tastingStore = useTastingStore()
 const wineListStore = useWineListStore()
 const statsStore = useStatsStore()
+const achievementStore = useAchievementStore()
 
 const showMap = ref(false)
 const user = computed(() => userStore.currentUser)
@@ -195,6 +257,32 @@ const myRecords = computed(() => tastingStore.myRecords)
 const myLists = computed(() => wineListStore.myWineLists)
 const allRegions = ref(regionStats)
 const userRegions = computed(() => statsStore.userStats?.regions || [])
+
+const levelInfo = computed(() => achievementStore.currentLevelInfo)
+const nextLevelInfo = computed(() => achievementStore.nextLevelInfo)
+const currentLevel = computed(() => achievementStore.userProgress?.currentLevel || 1)
+const levelProgressPercent = computed(() => Math.round(achievementStore.levelProgress * 100))
+const expInLevel = computed(() => {
+  if (!achievementStore.userProgress || !levelInfo.value) return 0
+  return achievementStore.userProgress.currentExp - levelInfo.value.minExp
+})
+const expNeeded = computed(() => {
+  if (!levelInfo.value) return 100
+  return levelInfo.value.maxExp - levelInfo.value.minExp
+})
+const remainingExp = computed(() => {
+  if (!achievementStore.userProgress || !nextLevelInfo.value) return 0
+  return nextLevelInfo.value.minExp - achievementStore.userProgress.currentExp
+})
+
+const unlockedPreview = computed(() => {
+  const list = achievementStore.unlockedAchievements.slice()
+  list.sort((a, b) => {
+    const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 }
+    return (rarityOrder[a.achievement.rarity] || 99) - (rarityOrder[b.achievement.rarity] || 99)
+  })
+  return list.slice(0, 6)
+})
 
 const getAverageRating = (rating: TastingRating) => {
   return (rating.color + rating.aroma + rating.taste + rating.finish) / 4
@@ -229,12 +317,17 @@ const goToDashboard = () => {
   router.push('/dashboard')
 }
 
+const goToAchievements = () => {
+  router.push('/achievements')
+}
+
 onMounted(async () => {
   if (user.value) {
     await Promise.all([
       tastingStore.fetchMyRecords(user.value.id),
       wineListStore.fetchMyWineLists(user.value.id),
-      statsStore.fetchUserStats(user.value.id)
+      statsStore.fetchUserStats(user.value.id),
+      achievementStore.loadAllForUser(user.value.id)
     ])
   }
 })
@@ -655,5 +748,132 @@ onMounted(async () => {
   font-size: 12px;
   color: #8B4513;
   font-weight: 600;
+}
+
+.level-card {
+  margin: 16px 0;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  transition: all 0.25s ease;
+}
+
+.level-card:active {
+  transform: scale(0.98);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.level-info-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.level-icon {
+  font-size: 40px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.level-info-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.level-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.level-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(245, 166, 35, 0.25);
+  padding: 2px 10px;
+  border-radius: 8px;
+}
+
+.level-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.exp-bar-mini {
+  position: relative;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.exp-fill-mini {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.6s ease;
+}
+
+.exp-text-mini {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.next-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.achievements-preview {
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.03) 0%, rgba(245, 166, 35, 0.05) 100%);
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.preview-badge {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.preview-badge.empty-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.04);
+  border: 2px dashed rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+}
+
+.empty-sm {
+  padding: 10px 0;
+}
+
+.empty-sm :deep(.van-empty__image) {
+  width: 60px;
+  height: 60px;
+}
+
+.empty-sm :deep(.van-empty__description) {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
 }
 </style>

@@ -86,6 +86,12 @@ const routes: RouteRecordRaw[] = [
     name: 'dashboard',
     component: () => import('@/pages/DataDashboardPage.vue'),
     meta: { title: '数据看板', tabbar: false }
+  },
+  {
+    path: '/achievements',
+    name: 'achievements',
+    component: () => import('@/pages/AchievementsPage.vue'),
+    meta: { title: '成就中心', tabbar: false }
   }
 ]
 
