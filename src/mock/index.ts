@@ -2,6 +2,7 @@ export * from './users'
 export * from './wines'
 export * from './tastingRecords'
 export * from './wineLists'
+export * from './notifications'
 
 import type { RegionStats } from '@/types'
 

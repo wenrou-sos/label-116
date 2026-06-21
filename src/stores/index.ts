@@ -1,7 +1,7 @@
 import { createPinia } from 'pinia'
 import { defineStore } from 'pinia'
-import type { User, Wine, TastingRecord, WineList, CreateTastingParams, RegionStats, Comment } from '@/types'
-import { userApi, wineApi, tastingApi, wineListApi, statsApi } from '@/api'
+import type { User, Wine, TastingRecord, WineList, CreateTastingParams, RegionStats, Comment, Notification } from '@/types'
+import { userApi, wineApi, tastingApi, wineListApi, statsApi, notificationApi } from '@/api'
 import { ref, computed } from 'vue'
 
 export const pinia = createPinia()
@@ -639,5 +639,75 @@ export const useStatsStore = defineStore('stats', () => {
     fetchRegionStats,
     fetchUserStats,
     wineTypeLabels
+  }
+})
+
+export const useNotificationStore = defineStore('notification', () => {
+  const notifications = ref<Notification[]>([])
+  const unreadCount = ref(0)
+  const loading = ref(false)
+
+  const unreadNotifications = computed(() =>
+    notifications.value.filter(n => !n.isRead)
+  )
+
+  const hasUnread = computed(() => unreadCount.value > 0)
+
+  const fetchNotifications = async () => {
+    loading.value = true
+    try {
+      notifications.value = await notificationApi.getNotifications()
+      unreadCount.value = notifications.value.filter(n => !n.isRead).length
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchUnreadCount = async () => {
+    try {
+      unreadCount.value = await notificationApi.getUnreadCount()
+    } catch (e) {
+      console.error('Failed to fetch unread count:', e)
+    }
+  }
+
+  const markAsRead = async (id: string) => {
+    await notificationApi.markAsRead(id)
+    const notification = notifications.value.find(n => n.id === id)
+    if (notification && !notification.isRead) {
+      notification.isRead = true
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    await notificationApi.markAllAsRead()
+    notifications.value.forEach(n => {
+      n.isRead = true
+    })
+    unreadCount.value = 0
+  }
+
+  const removeNotification = async (id: string) => {
+    const notification = notifications.value.find(n => n.id === id)
+    const wasUnread = notification && !notification.isRead
+    await notificationApi.deleteNotification(id)
+    notifications.value = notifications.value.filter(n => n.id !== id)
+    if (wasUnread) {
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    }
+  }
+
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    unreadNotifications,
+    hasUnread,
+    fetchNotifications,
+    fetchUnreadCount,
+    markAsRead,
+    markAllAsRead,
+    removeNotification
   }
 })

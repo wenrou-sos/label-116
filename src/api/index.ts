@@ -1,14 +1,16 @@
 import axios from 'axios'
 import type { 
   User, Wine, TastingRecord, WineList, 
-  CreateTastingParams, RegionStats, Comment 
+  CreateTastingParams, RegionStats, Comment, Notification
 } from '@/types'
 import { 
   mockUsers, currentUser, mockWines, mockTastingRecords, 
   mockWineLists, regionStats, getFeedRecords, getMyRecords, 
   getWineById, searchWines, getWinesByRegion, getWinesByType, 
   getWinesByVariety, getPopularWines, getTopRatedWines,
-  getWineLists, getMyWineLists, getWineListById
+  getWineLists, getMyWineLists, getWineListById,
+  getNotifications, markNotificationRead, markAllNotificationsRead,
+  deleteNotification, getUnreadCount
 } from '@/mock'
 import { useCache, cacheKey } from '@/composables/useCache'
 
@@ -393,5 +395,47 @@ export const statsApi = {
       })
     }
     return withCache(cacheKey.stats(userId), () => api.get(`/stats/user/${userId}`))
+  }
+}
+
+export const notificationApi = {
+  async getNotifications(): Promise<Notification[]> {
+    if (USE_MOCK) return Promise.resolve(getNotifications())
+    return withCache(cacheKey.notifications(), () => api.get('/notifications'))
+  },
+
+  async getUnreadCount(): Promise<number> {
+    if (USE_MOCK) return Promise.resolve(getUnreadCount())
+    return withCache(cacheKey.unreadCount(), () => api.get('/notifications/unread-count'))
+  },
+
+  async markAsRead(id: string): Promise<void> {
+    if (USE_MOCK) {
+      markNotificationRead(id)
+      invalidateCacheByPrefix('notifications_')
+      return Promise.resolve()
+    }
+    await api.post(`/notifications/${id}/read`)
+    invalidateCacheByPrefix('notifications_')
+  },
+
+  async markAllAsRead(): Promise<void> {
+    if (USE_MOCK) {
+      markAllNotificationsRead()
+      invalidateCacheByPrefix('notifications_')
+      return Promise.resolve()
+    }
+    await api.post('/notifications/read-all')
+    invalidateCacheByPrefix('notifications_')
+  },
+
+  async deleteNotification(id: string): Promise<void> {
+    if (USE_MOCK) {
+      deleteNotification(id)
+      invalidateCacheByPrefix('notifications_')
+      return Promise.resolve()
+    }
+    await api.delete(`/notifications/${id}`)
+    invalidateCacheByPrefix('notifications_')
   }
 }

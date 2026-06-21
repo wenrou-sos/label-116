@@ -169,5 +169,7 @@ export const cacheKey = {
   stats: (userId: string) => `stats_${userId}`,
   regionStats: 'region_stats',
   popularWines: 'popular_wines',
-  topRatedWines: 'top_rated_wines'
+  topRatedWines: 'top_rated_wines',
+  notifications: () => `notifications_list`,
+  unreadCount: () => `notifications_unread_count`
 }

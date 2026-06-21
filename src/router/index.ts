@@ -22,6 +22,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '记录品鉴', tabbar: true }
   },
   {
+    path: '/messages',
+    name: 'messages',
+    component: () => import('@/pages/MessagesPage.vue'),
+    meta: { title: '消息', tabbar: true }
+  },
+  {
     path: '/lists',
     name: 'lists',
     component: () => import('@/pages/WineListsPage.vue'),

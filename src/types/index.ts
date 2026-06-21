@@ -97,3 +97,18 @@ export interface CreateTastingParams {
   price: number
   purchaseChannel: string
 }
+
+export type NotificationType = 'like' | 'comment' | 'follow' | 'collect'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  fromUserId: string
+  fromUser: User
+  targetType: 'record' | 'list' | 'user'
+  targetId: string
+  targetTitle?: string
+  commentContent?: string
+  isRead: boolean
+  createdAt: string
+}
