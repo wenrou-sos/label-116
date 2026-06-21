@@ -547,7 +547,11 @@ export const achievementApi = {
             current = progress.tastingCount
             break
           case 'typeCoverage':
-            current = progress.uniqueWineTypes.length
+            if (ach.condition.wineType) {
+              current = progress.wineTypeCounts[ach.condition.wineType] || 0
+            } else {
+              current = progress.uniqueWineTypes.length
+            }
             break
           case 'listCount':
             current = progress.listCount

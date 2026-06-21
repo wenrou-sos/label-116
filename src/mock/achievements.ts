@@ -112,7 +112,7 @@ export const achievements: Achievement[] = [
     icon: '🥃',
     category: 'type',
     rarity: 'rare',
-    condition: { type: 'typeCoverage', target: 6 }
+    condition: { type: 'typeCoverage', target: 2, wineType: 'spirit' }
   },
   {
     id: 'type-all',
@@ -234,6 +234,11 @@ const calculateProgress = (userId: string): UserProgress => {
   const myRecords = mockTastingRecords.filter(r => r.userId === userId)
   const myWines = myRecords.map(r => mockWines.find(w => w.id === r.wineId)!).filter(Boolean)
   const uniqueWineTypes = Array.from(new Set(myWines.map(w => w.type))) as string[]
+  const wineTypeCounts: Record<string, number> = {}
+  for (const w of myWines) {
+    if (!wineTypeCounts[w.type]) wineTypeCounts[w.type] = 0
+    wineTypeCounts[w.type]++
+  }
   const myLists = mockWineLists.filter(l => l.userId === userId)
   const totalLikes = myRecords.reduce((sum, r) => sum + r.likes, 0) +
     myLists.reduce((sum, l) => sum + l.likes, 0)
@@ -261,7 +266,11 @@ const calculateProgress = (userId: string): UserProgress => {
         reached = myRecords.length >= ach.condition.target
         break
       case 'typeCoverage':
-        reached = uniqueWineTypes.length >= ach.condition.target
+        if (ach.condition.wineType) {
+          reached = (wineTypeCounts[ach.condition.wineType] || 0) >= ach.condition.target
+        } else {
+          reached = uniqueWineTypes.length >= ach.condition.target
+        }
         break
       case 'listCount':
         reached = myLists.length >= ach.condition.target
@@ -282,6 +291,7 @@ const calculateProgress = (userId: string): UserProgress => {
     currentLevel,
     tastingCount: myRecords.length,
     uniqueWineTypes,
+    wineTypeCounts,
     listCount: myLists.length,
     totalLikes,
     regionCount,
@@ -361,7 +371,11 @@ export const addExpForAction = (userId: string, expAmount: number): {
         reached = progress.tastingCount >= ach.condition.target
         break
       case 'typeCoverage':
-        reached = progress.uniqueWineTypes.length >= ach.condition.target
+        if (ach.condition.wineType) {
+          reached = (progress.wineTypeCounts[ach.condition.wineType] || 0) >= ach.condition.target
+        } else {
+          reached = progress.uniqueWineTypes.length >= ach.condition.target
+        }
         break
       case 'listCount':
         reached = progress.listCount >= ach.condition.target

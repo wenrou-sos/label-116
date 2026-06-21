@@ -145,6 +145,7 @@ export interface UserProgress {
   currentLevel: number
   tastingCount: number
   uniqueWineTypes: string[]
+  wineTypeCounts: Record<string, number>
   listCount: number
   totalLikes: number
   regionCount: number
