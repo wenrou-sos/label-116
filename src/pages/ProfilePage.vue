@@ -29,6 +29,17 @@
           <div class="stat-label">粉丝</div>
         </div>
       </div>
+      
+      <div class="quick-actions">
+        <div class="action-item" @click="goToDashboard">
+          <div class="action-icon">📊</div>
+          <div class="action-text">
+            <div class="action-title">数据看板</div>
+            <div class="action-desc">查看品鉴数据分析</div>
+          </div>
+          <van-icon name="arrow" size="16" color="rgba(255,255,255,0.5)" />
+        </div>
+      </div>
     </div>
     
     <div class="content">
@@ -214,6 +225,10 @@ const goToCreateList = () => {
   router.push('/create-list')
 }
 
+const goToDashboard = () => {
+  router.push('/dashboard')
+}
+
 onMounted(async () => {
   if (user.value) {
     await Promise.all([
@@ -307,6 +322,56 @@ onMounted(async () => {
   font-size: 11px;
   color: #666;
   margin-top: 4px;
+}
+
+.quick-actions {
+  margin-top: 12px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.action-item:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.4) 0%, rgba(255, 193, 7, 0.4) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.action-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.action-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .content {

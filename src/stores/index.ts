@@ -460,6 +460,17 @@ export const useStatsStore = defineStore('stats', () => {
   const regionStats = ref<RegionStats[]>([])
   const userStats = ref<{ totalTastings: number, regions: RegionStats[] } | null>(null)
   const loading = ref(false)
+  const tastingStore = useTastingStore()
+
+  const wineTypeLabels: Record<string, string> = {
+    red: '红葡萄酒',
+    white: '白葡萄酒',
+    sparkling: '起泡酒',
+    dessert: '甜酒',
+    whiskey: '威士忌',
+    brandy: '白兰地',
+    other: '其他'
+  }
 
   const fetchRegionStats = async () => {
     loading.value = true
@@ -488,6 +499,113 @@ export const useStatsStore = defineStore('stats', () => {
     return new Set(userStats.value.regions.map(r => r.country)).size
   })
 
+  const monthlyTrend = computed(() => {
+    const records = tastingStore.myRecords
+    if (records.length === 0) {
+      return { months: [], counts: [] }
+    }
+
+    const monthMap = new Map<string, number>()
+    const now = new Date()
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthMap.set(key, 0)
+    }
+
+    records.forEach(record => {
+      const date = new Date(record.createdAt)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (monthMap.has(key)) {
+        monthMap.set(key, monthMap.get(key)! + 1)
+      }
+    })
+
+    const months: string[] = []
+    const counts: number[] = []
+    monthMap.forEach((count, month) => {
+      const [, m] = month.split('-')
+      months.push(`${parseInt(m)}月`)
+      counts.push(count)
+    })
+
+    return { months, counts }
+  })
+
+  const typeDistribution = computed(() => {
+    const records = tastingStore.myRecords
+    if (records.length === 0) {
+      return { types: [], counts: [], colors: [] }
+    }
+
+    const typeCount = new Map<string, number>()
+    records.forEach(record => {
+      const type = record.wine.type
+      typeCount.set(type, (typeCount.get(type) || 0) + 1)
+    })
+
+    const colorMap: Record<string, string> = {
+      red: '#E74C3C',
+      white: '#F1C40F',
+      sparkling: '#3498DB',
+      dessert: '#E91E63',
+      whiskey: '#D35400',
+      brandy: '#8E44AD',
+      other: '#95A5A6'
+    }
+
+    const types: string[] = []
+    const counts: number[] = []
+    const colors: string[] = []
+
+    typeCount.forEach((count, type) => {
+      types.push(wineTypeLabels[type] || type)
+      counts.push(count)
+      colors.push(colorMap[type] || '#95A5A6')
+    })
+
+    return { types, counts, colors }
+  })
+
+  const regionStatsBar = computed(() => {
+    const regions = userStats.value?.regions || []
+    const sorted = [...regions].sort((a, b) => b.count - a.count).slice(0, 8)
+    return {
+      regions: sorted.map(r => r.region),
+      counts: sorted.map(r => r.count),
+      countries: sorted.map(r => r.country)
+    }
+  })
+
+  const averageRating = computed(() => {
+    const records = tastingStore.myRecords
+    if (records.length === 0) return 0
+    const total = records.reduce((sum, r) => {
+      const avg = (r.rating.color + r.rating.aroma + r.rating.taste + r.rating.finish) / 4
+      return sum + avg
+    }, 0)
+    return Math.round((total / records.length) * 10) / 10
+  })
+
+  const monthlyCount = computed(() => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+    return tastingStore.myRecords.filter(r => {
+      const d = new Date(r.createdAt)
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    }).length
+  })
+
+  const keyMetrics = computed(() => ({
+    totalTastings: totalTastingsCount.value,
+    averageRating: averageRating.value,
+    monthlyCount: monthlyCount.value,
+    regionsVisited: regionsVisited.value,
+    countriesVisited: countriesVisited.value
+  }))
+
   return {
     regionStats,
     userStats,
@@ -495,7 +613,14 @@ export const useStatsStore = defineStore('stats', () => {
     totalTastingsCount,
     regionsVisited,
     countriesVisited,
+    monthlyTrend,
+    typeDistribution,
+    regionStatsBar,
+    averageRating,
+    monthlyCount,
+    keyMetrics,
     fetchRegionStats,
-    fetchUserStats
+    fetchUserStats,
+    wineTypeLabels
   }
 })

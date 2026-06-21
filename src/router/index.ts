@@ -74,6 +74,12 @@ const routes: RouteRecordRaw[] = [
     name: 'search-wine',
     component: () => import('@/pages/SearchWinePage.vue'),
     meta: { title: '选择酒款', tabbar: false }
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('@/pages/DataDashboardPage.vue'),
+    meta: { title: '数据看板', tabbar: false }
   }
 ]
 
