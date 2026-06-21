@@ -10,7 +10,7 @@ import {
   getWinesByVariety, getPopularWines, getTopRatedWines,
   getWineLists, getMyWineLists, getWineListById,
   getNotifications, markNotificationRead, markAllNotificationsRead,
-  deleteNotification, getUnreadCount
+  deleteNotification, getUnreadCount, createNotification
 } from '@/mock'
 import { useCache, cacheKey } from '@/composables/useCache'
 
@@ -58,11 +58,21 @@ export const userApi = {
   
   async followUser(userId: string): Promise<void> {
     if (USE_MOCK) {
+      if (userId !== currentUser.id) {
+        createNotification({
+          type: 'follow',
+          targetType: 'user',
+          targetId: userId,
+          targetUserId: userId
+        })
+      }
       removeCache(cacheKey.user(userId))
+      invalidateCacheByPrefix('notifications_')
       return Promise.resolve()
     }
     await api.post(`/user/${userId}/follow`)
     removeCache(cacheKey.user(userId))
+    invalidateCacheByPrefix('notifications_')
   },
   
   async unfollowUser(userId: string): Promise<void> {
@@ -202,17 +212,29 @@ export const tastingApi = {
     if (USE_MOCK) {
       const record = mockTastingRecords.find(r => r.id === recordId)
       if (record) {
+        const wasLiked = record.isLiked
         record.isLiked = !record.isLiked
         record.likes += record.isLiked ? 1 : -1
+        if (!wasLiked && record.isLiked && record.userId !== currentUser.id) {
+          createNotification({
+            type: 'like',
+            targetType: 'record',
+            targetId: recordId,
+            targetTitle: record.wine.name,
+            targetUserId: record.userId
+          })
+        }
       }
       invalidateCacheByPrefix('feed_')
       invalidateCacheByPrefix('user_records_')
+      invalidateCacheByPrefix('notifications_')
       removeCache(cacheKey.tastingRecord(recordId))
       return Promise.resolve()
     }
     await api.post(`/tasting/${recordId}/like`)
     invalidateCacheByPrefix('feed_')
     invalidateCacheByPrefix('user_records_')
+    invalidateCacheByPrefix('notifications_')
     removeCache(cacheKey.tastingRecord(recordId))
   },
   
@@ -229,14 +251,26 @@ export const tastingApi = {
       }
       record.comments.push(newComment)
       record.commentsCount++
+      if (record.userId !== currentUser.id) {
+        createNotification({
+          type: 'comment',
+          targetType: 'record',
+          targetId: recordId,
+          targetTitle: record.wine.name,
+          commentContent: content,
+          targetUserId: record.userId
+        })
+      }
       invalidateCacheByPrefix('feed_')
       invalidateCacheByPrefix('user_records_')
+      invalidateCacheByPrefix('notifications_')
       removeCache(cacheKey.tastingRecord(recordId))
       return Promise.resolve(newComment)
     }
     const result = await api.post<any, Comment>(`/tasting/${recordId}/comment`, { content })
     invalidateCacheByPrefix('feed_')
     invalidateCacheByPrefix('user_records_')
+    invalidateCacheByPrefix('notifications_')
     removeCache(cacheKey.tastingRecord(recordId))
     return result
   }
@@ -350,17 +384,29 @@ export const wineListApi = {
     if (USE_MOCK) {
       const list = mockWineLists.find(l => l.id === listId)
       if (list) {
+        const wasLiked = list.isLiked
         list.isLiked = !list.isLiked
         list.likes += list.isLiked ? 1 : -1
+        if (!wasLiked && list.isLiked && list.userId !== currentUser.id) {
+          createNotification({
+            type: 'collect',
+            targetType: 'list',
+            targetId: listId,
+            targetTitle: list.title,
+            targetUserId: list.userId
+          })
+        }
       }
       invalidateCacheByPrefix('lists_')
       invalidateCacheByPrefix('user_lists_')
+      invalidateCacheByPrefix('notifications_')
       removeCache(cacheKey.wineList(listId))
       return Promise.resolve()
     }
     await api.post(`/lists/${listId}/like`)
     invalidateCacheByPrefix('lists_')
     invalidateCacheByPrefix('user_lists_')
+    invalidateCacheByPrefix('notifications_')
     removeCache(cacheKey.wineList(listId))
   }
 }
@@ -437,5 +483,23 @@ export const notificationApi = {
     }
     await api.delete(`/notifications/${id}`)
     invalidateCacheByPrefix('notifications_')
+  },
+
+  async createNotification(params: {
+    type: 'like' | 'comment' | 'follow' | 'collect'
+    targetType: 'record' | 'list' | 'user'
+    targetId: string
+    targetTitle?: string
+    commentContent?: string
+    targetUserId: string
+  }): Promise<Notification | null> {
+    if (USE_MOCK) {
+      const result = createNotification(params)
+      invalidateCacheByPrefix('notifications_')
+      return Promise.resolve(result)
+    }
+    const result = await api.post<any, Notification>('/notifications', params)
+    invalidateCacheByPrefix('notifications_')
+    return result
   }
 }

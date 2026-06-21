@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onBeforeUnmount, onActivated } from 'vue'
 import { CheckCheck } from 'lucide-vue-next'
 import { showToast } from 'vant'
 import 'vant/es/toast/style'
@@ -75,8 +75,28 @@ const handleDelete = async (id: string) => {
   }
 }
 
-onMounted(() => {
+const refreshData = () => {
   notificationStore.fetchNotifications()
+  notificationStore.fetchUnreadCount()
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    refreshData()
+  }
+}
+
+onMounted(() => {
+  refreshData()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onActivated(() => {
+  refreshData()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

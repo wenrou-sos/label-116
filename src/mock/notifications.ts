@@ -134,3 +134,34 @@ export const deleteNotification = (id: string): void => {
 export const getUnreadCount = (): number => {
   return mockNotifications.filter(n => !n.isRead).length
 }
+
+export const createNotification = (params: {
+  type: 'like' | 'comment' | 'follow' | 'collect'
+  targetType: 'record' | 'list' | 'user'
+  targetId: string
+  targetTitle?: string
+  commentContent?: string
+  targetUserId: string
+}): Notification | null => {
+  if (params.targetUserId === currentUser.id) return null
+
+  const fromUser = currentUser
+  const targetUser = mockUsers.find(u => u.id === params.targetUserId)
+  if (!targetUser) return null
+
+  const newNotification: Notification = {
+    id: `notification-${Date.now()}`,
+    type: params.type,
+    fromUserId: currentUser.id,
+    fromUser,
+    targetType: params.targetType,
+    targetId: params.targetId,
+    targetTitle: params.targetTitle,
+    commentContent: params.commentContent,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  }
+
+  mockNotifications.unshift(newNotification)
+  return newNotification
+}

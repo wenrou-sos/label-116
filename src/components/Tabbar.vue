@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { Home, Compass, PlusCircle, Bell, ListOrdered, User } from 'lucide-vue-next'
 import { useNotificationStore } from '@/stores'
@@ -53,13 +53,41 @@ import { useNotificationStore } from '@/stores'
 const route = useRoute()
 const active = ref(route.path)
 const notificationStore = useNotificationStore()
+let pollTimer: number | null = null
 
 watch(() => route.path, (path) => {
   active.value = path
 })
 
+const startPolling = () => {
+  stopPolling()
+  pollTimer = window.setInterval(() => {
+    notificationStore.fetchUnreadCount()
+  }, 10000)
+}
+
+const stopPolling = () => {
+  if (pollTimer !== null) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    notificationStore.fetchUnreadCount()
+  }
+}
+
 onMounted(() => {
   notificationStore.fetchUnreadCount()
+  startPolling()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

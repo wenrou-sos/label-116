@@ -27,6 +27,8 @@ export const useUserStore = defineStore('user', () => {
   const followUser = async (userId: string) => {
     await userApi.followUser(userId)
     followingIds.value.add(userId)
+    const notificationStore = useNotificationStore()
+    notificationStore.fetchUnreadCount()
   }
 
   const unfollowUser = async (userId: string) => {
@@ -245,6 +247,8 @@ export const useTastingStore = defineStore('tasting', () => {
       currentRecord.value.isLiked = !currentRecord.value.isLiked
       currentRecord.value.likes += currentRecord.value.isLiked ? 1 : -1
     }
+    const notificationStore = useNotificationStore()
+    notificationStore.fetchUnreadCount()
   }
 
   const addComment = async (recordId: string, content: string) => {
@@ -263,6 +267,8 @@ export const useTastingStore = defineStore('tasting', () => {
       myRecord.comments.push(comment)
       myRecord.commentsCount++
     }
+    const notificationStore = useNotificationStore()
+    notificationStore.fetchUnreadCount()
     return comment
   }
 
@@ -421,6 +427,8 @@ export const useWineListStore = defineStore('wineList', () => {
       myList.isLiked = !myList.isLiked
       myList.likes += myList.isLiked ? 1 : -1
     }
+    const notificationStore = useNotificationStore()
+    notificationStore.fetchUnreadCount()
   }
 
   const addWineToList = async (listId: string, wineId: string) => {
