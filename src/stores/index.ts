@@ -9,6 +9,7 @@ export const pinia = createPinia()
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)
   const loading = ref(false)
+  const followingIds = ref<Set<string>>(new Set())
 
   const fetchCurrentUser = async () => {
     loading.value = true
@@ -19,18 +20,26 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const isFollowing = (userId: string) => {
+    return followingIds.value.has(userId)
+  }
+
   const followUser = async (userId: string) => {
     await userApi.followUser(userId)
+    followingIds.value.add(userId)
   }
 
   const unfollowUser = async (userId: string) => {
     await userApi.unfollowUser(userId)
+    followingIds.value.delete(userId)
   }
 
   return {
     currentUser,
     loading,
+    followingIds,
     fetchCurrentUser,
+    isFollowing,
     followUser,
     unfollowUser
   }
@@ -192,18 +201,27 @@ export const useTastingStore = defineStore('tasting', () => {
       myRecord.isLiked = !myRecord.isLiked
       myRecord.likes += myRecord.isLiked ? 1 : -1
     }
+    if (currentRecord.value?.id === recordId) {
+      currentRecord.value.isLiked = !currentRecord.value.isLiked
+      currentRecord.value.likes += currentRecord.value.isLiked ? 1 : -1
+    }
   }
 
   const addComment = async (recordId: string, content: string) => {
     const comment = await tastingApi.addComment(recordId, content)
     const record = feedRecords.value.find(r => r.id === recordId)
-    if (record) {
+    if (record && !record.comments.find(c => c.id === comment.id)) {
       record.comments.push(comment)
       record.commentsCount++
     }
-    if (currentRecord.value?.id === recordId) {
+    if (currentRecord.value?.id === recordId && !currentRecord.value.comments.find(c => c.id === comment.id)) {
       currentRecord.value.comments.push(comment)
       currentRecord.value.commentsCount++
+    }
+    const myRecord = myRecords.value.find(r => r.id === recordId)
+    if (myRecord && !myRecord.comments.find(c => c.id === comment.id)) {
+      myRecord.comments.push(comment)
+      myRecord.commentsCount++
     }
     return comment
   }
@@ -278,7 +296,7 @@ export const useWineListStore = defineStore('wineList', () => {
     }
   }
 
-  const updateList = async (id: string, params: { title?: string, description?: string, wineIds?: string[] }) => {
+  const updateList = async (id: string, params: { title?: string, description?: string, wineIds?: string[], coverImage?: string }) => {
     loading.value = true
     try {
       const list = await wineListApi.updateWineList(id, params)
@@ -317,6 +335,22 @@ export const useWineListStore = defineStore('wineList', () => {
     }
   }
 
+  const addWineToList = async (listId: string, wineId: string) => {
+    const updatedList = await wineListApi.addWineToList(listId, wineId)
+    const listIndex = wineLists.value.findIndex(l => l.id === listId)
+    if (listIndex > -1) {
+      wineLists.value[listIndex] = updatedList
+    }
+    const myIndex = myWineLists.value.findIndex(l => l.id === listId)
+    if (myIndex > -1) {
+      myWineLists.value[myIndex] = updatedList
+    }
+    if (currentList.value?.id === listId) {
+      currentList.value = updatedList
+    }
+    return updatedList
+  }
+
   return {
     wineLists,
     myWineLists,
@@ -329,7 +363,8 @@ export const useWineListStore = defineStore('wineList', () => {
     createList,
     updateList,
     deleteList,
-    likeList
+    likeList,
+    addWineToList
   }
 })
 

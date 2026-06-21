@@ -85,7 +85,7 @@
               <div class="wine-name">{{ wine.name }}</div>
               <div class="wine-meta">{{ wine.country }} · {{ wine.region }}</div>
               <div class="wine-bottom">
-                <StarRating v-model="wine.rating" readonly size="small" />
+                <StarRating :model-value="wine.rating" readonly size="small" />
                 <div class="wine-price">¥{{ wine.price }}</div>
               </div>
             </div>

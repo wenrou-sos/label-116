@@ -27,19 +27,19 @@
     <div class="rating-section">
       <div class="rating-item">
         <span class="rating-label">色泽</span>
-        <StarRating v-model="record.rating.color" readonly />
+        <StarRating :model-value="record.rating.color" readonly />
       </div>
       <div class="rating-item">
         <span class="rating-label">闻香</span>
-        <StarRating v-model="record.rating.aroma" readonly />
+        <StarRating :model-value="record.rating.aroma" readonly />
       </div>
       <div class="rating-item">
         <span class="rating-label">口感</span>
-        <StarRating v-model="record.rating.taste" readonly />
+        <StarRating :model-value="record.rating.taste" readonly />
       </div>
       <div class="rating-item">
         <span class="rating-label">余味</span>
-        <StarRating v-model="record.rating.finish" readonly />
+        <StarRating :model-value="record.rating.finish" readonly />
       </div>
     </div>
     

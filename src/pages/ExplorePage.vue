@@ -86,7 +86,7 @@
                     <div class="ranking-name">{{ wine.name }}</div>
                     <div class="ranking-meta">{{ wine.country }} · {{ wine.region }}</div>
                     <div class="ranking-stats">
-                      <StarRating v-model="wine.rating" readonly show-value />
+                      <StarRating :model-value="wine.rating" readonly show-value />
                       <span class="tasting-count">{{ wine.tastingCount }} 人品鉴</span>
                     </div>
                   </div>
@@ -116,7 +116,7 @@
                     <div class="ranking-name">{{ wine.name }}</div>
                     <div class="ranking-meta">{{ wine.country }} · {{ wine.region }}</div>
                     <div class="ranking-stats">
-                      <StarRating v-model="wine.rating" readonly show-value />
+                      <StarRating :model-value="wine.rating" readonly show-value />
                       <span class="tasting-count">{{ wine.tastingCount }} 人品鉴</span>
                     </div>
                   </div>
@@ -156,19 +156,19 @@
                   <div class="review-rating">
                     <div class="rating-mini">
                       <span class="label">色泽</span>
-                      <StarRating v-model="record.rating.color" readonly size="small" />
+                      <StarRating :model-value="record.rating.color" readonly size="small" />
                     </div>
                     <div class="rating-mini">
                       <span class="label">闻香</span>
-                      <StarRating v-model="record.rating.aroma" readonly size="small" />
+                      <StarRating :model-value="record.rating.aroma" readonly size="small" />
                     </div>
                     <div class="rating-mini">
                       <span class="label">口感</span>
-                      <StarRating v-model="record.rating.taste" readonly size="small" />
+                      <StarRating :model-value="record.rating.taste" readonly size="small" />
                     </div>
                     <div class="rating-mini">
                       <span class="label">余味</span>
-                      <StarRating v-model="record.rating.finish" readonly size="small" />
+                      <StarRating :model-value="record.rating.finish" readonly size="small" />
                     </div>
                   </div>
                   <div class="review-content">{{ record.description }}</div>

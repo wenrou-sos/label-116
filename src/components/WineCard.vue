@@ -13,7 +13,7 @@
       </div>
       <div class="wine-bottom">
         <div class="wine-rating">
-          <StarRating v-model="wine.rating" readonly show-value />
+          <StarRating :model-value="wine.rating" readonly show-value />
         </div>
         <div class="wine-price">¥{{ wine.price }}</div>
       </div>

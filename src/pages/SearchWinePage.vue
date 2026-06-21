@@ -83,7 +83,7 @@
                 <span v-if="wine.year">{{ wine.year }}</span>
               </div>
               <div class="wine-list-bottom">
-                <StarRating v-model="wine.rating" readonly show-value />
+                <StarRating :model-value="wine.rating" readonly show-value />
                 <span class="wine-price">¥{{ wine.price }}</span>
               </div>
             </div>

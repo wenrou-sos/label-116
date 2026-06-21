@@ -39,7 +39,7 @@
         <div class="rating-main">
           <div class="rating-score">{{ wine.rating.toFixed(1) }}</div>
           <div class="rating-stars">
-            <StarRating v-model="wine.rating" readonly size="medium" />
+            <StarRating :model-value="wine.rating" readonly size="medium" />
           </div>
           <div class="rating-count">{{ wine.tastingCount }} 人品鉴</div>
         </div>
@@ -112,7 +112,7 @@
                 <div class="review-time">{{ formatTime(review.createdAt) }}</div>
               </div>
               <div class="review-rating">
-                <StarRating v-model="getAverageRating(review.rating)" readonly size="small" />
+                <StarRating :model-value="getAverageRating(review.rating)" readonly size="small" />
               </div>
             </div>
             <div class="review-content">{{ review.description }}</div>
@@ -246,9 +246,15 @@ const goToCreateList = () => {
   router.push('/create-list')
 }
 
-const addToList = (listId: string) => {
-  showToast('已添加到酒单')
-  showAddToList.value = false
+const addToList = async (listId: string) => {
+  if (!wine.value) return
+  try {
+    await wineListStore.addWineToList(listId, wine.value.id)
+    showToast('已添加到酒单')
+    showAddToList.value = false
+  } catch (e) {
+    showToast('添加失败，请重试')
+  }
 }
 
 onMounted(async () => {

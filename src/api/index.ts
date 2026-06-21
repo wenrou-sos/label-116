@@ -254,18 +254,33 @@ export const wineListApi = {
     return api.post('/lists', params)
   },
   
-  async updateWineList(id: string, params: { title?: string, description?: string, wineIds?: string[] }): Promise<WineList> {
+  async updateWineList(id: string, params: { title?: string, description?: string, wineIds?: string[], coverImage?: string }): Promise<WineList> {
     if (USE_MOCK) {
       const list = mockWineLists.find(l => l.id === id)
       if (!list) throw new Error('List not found')
-      if (params.title) list.title = params.title
-      if (params.description) list.description = params.description
+      if (params.title !== undefined) list.title = params.title
+      if (params.description !== undefined) list.description = params.description
+      if (params.coverImage !== undefined) list.coverImage = params.coverImage
       if (params.wineIds) {
         list.wines = params.wineIds.map(wid => getWineById(wid)!).filter(Boolean)
       }
       return Promise.resolve(list)
     }
     return api.put(`/lists/${id}`, params)
+  },
+  
+  async addWineToList(listId: string, wineId: string): Promise<WineList> {
+    if (USE_MOCK) {
+      const list = mockWineLists.find(l => l.id === listId)
+      if (!list) throw new Error('List not found')
+      const wine = getWineById(wineId)
+      if (!wine) throw new Error('Wine not found')
+      if (!list.wines.find(w => w.id === wineId)) {
+        list.wines.push(wine)
+      }
+      return Promise.resolve(list)
+    }
+    return api.post(`/lists/${listId}/wines`, { wineId })
   },
   
   async deleteWineList(id: string): Promise<void> {

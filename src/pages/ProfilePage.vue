@@ -76,7 +76,7 @@
           >
             <img :src="record.wine.image" :alt="record.wine.name" class="record-wine-image" />
             <div class="record-overlay">
-              <StarRating v-model="getAverageRating(record.rating)" readonly size="small" />
+              <StarRating :model-value="getAverageRating(record.rating)" readonly size="small" />
             </div>
           </div>
         </div>
