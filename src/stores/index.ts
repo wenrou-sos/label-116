@@ -569,12 +569,29 @@ export const useStatsStore = defineStore('stats', () => {
   })
 
   const regionStatsBar = computed(() => {
-    const regions = userStats.value?.regions || []
-    const sorted = [...regions].sort((a, b) => b.count - a.count).slice(0, 8)
+    const records = tastingStore.myRecords
+    if (records.length === 0) {
+      return { regions: [], counts: [], countries: [] }
+    }
+
+    const regionMap = new Map<string, { count: number; country: string }>()
+    records.forEach(record => {
+      const region = record.wine.region
+      const country = record.wine.country
+      if (!regionMap.has(region)) {
+        regionMap.set(region, { count: 0, country })
+      }
+      regionMap.get(region)!.count++
+    })
+
+    const sorted = Array.from(regionMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8)
+
     return {
-      regions: sorted.map(r => r.region),
-      counts: sorted.map(r => r.count),
-      countries: sorted.map(r => r.country)
+      regions: sorted.map(r => r[0]),
+      counts: sorted.map(r => r[1].count),
+      countries: sorted.map(r => r[1].country)
     }
   })
 

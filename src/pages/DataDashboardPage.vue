@@ -7,10 +7,10 @@
       class="dashboard-nav"
     />
 
-    <div class="dashboard-content">
+    <div v-if="hasData && !loading" class="dashboard-content">
       <div class="metrics-section">
         <div class="section-title">
-          <van-icon name="chart-trending-o" size="20" color="#8B4513" />
+          <van-icon name="chart-trending-o" size="20" color="#F5A623" />
           <span>关键指标</span>
         </div>
         <div class="metrics-grid">
@@ -47,7 +47,7 @@
 
       <div class="chart-section">
         <div class="section-title">
-          <van-icon name="graph-line" size="20" color="#8B4513" />
+          <van-icon name="orders-o" size="20" color="#3498DB" />
           <span>品鉴趋势</span>
           <span class="subtitle">近6个月</span>
         </div>
@@ -58,7 +58,7 @@
 
       <div class="chart-section">
         <div class="section-title">
-          <van-icon name="chart-pie" size="20" color="#8B4513" />
+          <van-icon name="pie-chart-o" size="20" color="#E74C3C" />
           <span>酒款类型分布</span>
         </div>
         <div class="chart-card">
@@ -68,7 +68,7 @@
 
       <div class="chart-section">
         <div class="section-title">
-          <van-icon name="chart-column" size="20" color="#8B4513" />
+          <van-icon name="bar-chart-o" size="20" color="#9B59B6" />
           <span>产区打卡排行</span>
         </div>
         <div class="chart-card">
@@ -78,12 +78,12 @@
     </div>
 
     <van-loading v-if="loading" class="page-loading" color="#8B4513" />
-    <Empty v-if="!loading && stats.totalTastings === 0" description="暂无品鉴记录，快去品鉴吧~" />
+    <Empty v-else-if="!hasData" class="dark-empty" description="暂无品鉴记录，快去品鉴吧~" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStatsStore, useTastingStore, useUserStore } from '@/stores'
 import * as echarts from 'echarts/core'
@@ -124,6 +124,8 @@ let regionChart: echarts.ECharts | null = null
 const loading = ref(true)
 const stats = ref(statsStore.keyMetrics)
 
+const hasData = computed(() => tastingStore.myRecords.length > 0)
+
 const onBack = () => {
   router.back()
 }
@@ -139,6 +141,7 @@ const initTrendChart = () => {
   const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#8B4513',
       borderWidth: 1,
@@ -147,6 +150,7 @@ const initTrendChart = () => {
         fontSize: 12
       },
       formatter: (params: any) => {
+        if (!params || !params.length) return ''
         const data = params[0]
         return `<div style="padding: 4px 8px;">
           <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
@@ -165,11 +169,11 @@ const initTrendChart = () => {
       data: statsStore.monthlyTrend.months,
       axisLine: {
         lineStyle: {
-          color: '#E8E8E8'
+          color: 'rgba(255, 255, 255, 0.15)'
         }
       },
       axisLabel: {
-        color: '#666',
+        color: 'rgba(255, 255, 255, 0.6)',
         fontSize: 11
       },
       axisTick: {
@@ -187,12 +191,12 @@ const initTrendChart = () => {
       },
       splitLine: {
         lineStyle: {
-          color: '#F0F0F0',
+          color: 'rgba(255, 255, 255, 0.08)',
           type: 'dashed'
         }
       },
       axisLabel: {
-        color: '#999',
+        color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 10
       }
     },
@@ -245,6 +249,7 @@ const initTypeChart = () => {
   const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'item',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#8B4513',
       borderWidth: 1,
@@ -253,6 +258,7 @@ const initTypeChart = () => {
         fontSize: 12
       },
       formatter: (params: any) => {
+        if (!params) return ''
         return `<div style="padding: 4px 8px;">
           <div style="font-weight: 600; margin-bottom: 4px;">${params.name}</div>
           <div><span style="display:inline-block;width:8px;height:8px;background:${params.color};border-radius:50%;margin-right:6px;"></span>数量：${params.value} 款 (${params.percent}%)</div>
@@ -265,7 +271,7 @@ const initTypeChart = () => {
       top: 'center',
       itemGap: 10,
       textStyle: {
-        color: '#666',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 11
       },
       icon: 'circle'
@@ -278,7 +284,7 @@ const initTypeChart = () => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 6,
-          borderColor: '#fff',
+          borderColor: '#1a1a2e',
           borderWidth: 2
         },
         label: {
@@ -289,12 +295,12 @@ const initTypeChart = () => {
             show: true,
             fontSize: 13,
             fontWeight: 'bold',
-            color: '#333'
+            color: '#fff'
           },
           itemStyle: {
             shadowBlur: 10,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)'
+            shadowColor: 'rgba(0, 0, 0, 0.4)'
           }
         },
         labelLine: {
@@ -317,6 +323,7 @@ const initRegionChart = () => {
   const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
       axisPointer: {
         type: 'shadow'
       },
@@ -328,19 +335,22 @@ const initRegionChart = () => {
         fontSize: 12
       },
       formatter: (params: any) => {
+        if (!params || !params.length) return ''
         const data = params[0]
+        const regions = statsStore.regionStatsBar.regions
         const countries = statsStore.regionStatsBar.countries
-        const idx = data.dataIndex
+        const idx = regions.indexOf(data.name)
+        const country = idx >= 0 ? countries[idx] : ''
         return `<div style="padding: 4px 8px;">
           <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
-          <div style="color: #999; font-size: 11px; margin-bottom: 4px;">${countries[idx]}</div>
+          ${country ? `<div style="color: #999; font-size: 11px; margin-bottom: 4px;">${country}</div>` : ''}
           <div><span style="display:inline-block;width:8px;height:8px;background:#8B4513;border-radius:50%;margin-right:6px;"></span>品鉴：${data.value} 款</div>
         </div>`
       }
     },
     grid: {
       left: '3%',
-      right: '8%',
+      right: '14%',
       bottom: '5%',
       top: '10%',
       containLabel: true
@@ -356,12 +366,12 @@ const initRegionChart = () => {
       },
       splitLine: {
         lineStyle: {
-          color: '#F0F0F0',
+          color: 'rgba(255, 255, 255, 0.08)',
           type: 'dashed'
         }
       },
       axisLabel: {
-        color: '#999',
+        color: 'rgba(255, 255, 255, 0.5)',
         fontSize: 10
       }
     },
@@ -370,15 +380,18 @@ const initRegionChart = () => {
       data: statsStore.regionStatsBar.regions,
       axisLine: {
         lineStyle: {
-          color: '#E8E8E8'
+          color: 'rgba(255, 255, 255, 0.15)'
         }
       },
       axisTick: {
         show: false
       },
       axisLabel: {
-        color: '#666',
-        fontSize: 11
+        color: 'rgba(255, 255, 255, 0.75)',
+        fontSize: 11,
+        width: 65,
+        overflow: 'truncate',
+        ellipsis: '...'
       }
     },
     series: [
@@ -404,7 +417,7 @@ const initRegionChart = () => {
         label: {
           show: true,
           position: 'right',
-          color: '#8B4513',
+          color: 'rgba(255, 255, 255, 0.9)',
           fontWeight: 600,
           fontSize: 11,
           formatter: '{c}款'
@@ -510,6 +523,11 @@ onUnmounted(() => {
   color: #fff;
   margin-bottom: 12px;
   padding-left: 4px;
+}
+
+.section-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .section-title .subtitle {
@@ -647,5 +665,17 @@ onUnmounted(() => {
   .metrics-grid {
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+:deep(.dark-empty .empty-state) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:deep(.dark-empty .empty-icon) {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+:deep(.dark-empty .empty-text) {
+  color: rgba(255, 255, 255, 0.5);
 }
 </style>
