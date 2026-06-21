@@ -10,7 +10,7 @@
     <div v-if="hasData && !loading" class="dashboard-content">
       <div class="metrics-section">
         <div class="section-title">
-          <van-icon name="chart-trending-o" size="20" color="#F5A623" />
+          <TrendingUp class="section-icon" color="#F5A623" :size="20" />
           <span>关键指标</span>
         </div>
         <div class="metrics-grid">
@@ -45,9 +45,9 @@
         </div>
       </div>
 
-      <div class="chart-section">
+      <div v-show="statsStore.monthlyTrend.months.length > 0" class="chart-section">
         <div class="section-title">
-          <van-icon name="orders-o" size="20" color="#3498DB" />
+          <LineChart class="section-icon" color="#3498DB" :size="20" />
           <span>品鉴趋势</span>
           <span class="subtitle">近6个月</span>
         </div>
@@ -56,9 +56,9 @@
         </div>
       </div>
 
-      <div class="chart-section">
+      <div v-show="statsStore.typeDistribution.types.length > 0" class="chart-section">
         <div class="section-title">
-          <van-icon name="pie-chart-o" size="20" color="#E74C3C" />
+          <PieChart class="section-icon" color="#E74C3C" :size="20" />
           <span>酒款类型分布</span>
         </div>
         <div class="chart-card">
@@ -66,9 +66,9 @@
         </div>
       </div>
 
-      <div class="chart-section">
+      <div v-show="statsStore.regionStatsBar.regions.length > 0" class="chart-section">
         <div class="section-title">
-          <van-icon name="bar-chart-o" size="20" color="#9B59B6" />
+          <BarChart3 class="section-icon" color="#9B59B6" :size="20" />
           <span>产区打卡排行</span>
         </div>
         <div class="chart-card">
@@ -85,10 +85,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { TrendingUp, LineChart, PieChart, BarChart3 } from 'lucide-vue-next'
 import { useStatsStore, useTastingStore, useUserStore } from '@/stores'
 import * as echarts from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
-import { LineChart, PieChart, BarChart } from 'echarts/charts'
+import { LineChart as ELineChart, PieChart as EPieChart, BarChart as EBarChart } from 'echarts/charts'
 import {
   TitleComponent,
   TooltipComponent,
@@ -99,9 +100,9 @@ import Empty from '@/components/Empty.vue'
 
 echarts.use([
   SVGRenderer,
-  LineChart,
-  PieChart,
-  BarChart,
+  ELineChart,
+  EPieChart,
+  EBarChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
@@ -130,13 +131,14 @@ const onBack = () => {
   router.back()
 }
 
-const chartColors = ['#8B4513', '#D2691E', '#CD853F', '#DEB887', '#F4A460', '#D2B48C']
-
 const initTrendChart = () => {
   if (!trendChartRef.value) return
   if (trendChart) trendChart.dispose()
 
   trendChart = echarts.init(trendChartRef.value, undefined, { renderer: 'svg' })
+
+  const months = statsStore.monthlyTrend.months
+  const counts = statsStore.monthlyTrend.counts
 
   const option: echarts.EChartsCoreOption = {
     tooltip: {
@@ -150,23 +152,27 @@ const initTrendChart = () => {
         fontSize: 12
       },
       formatter: (params: any) => {
-        if (!params || !params.length) return ''
-        const data = params[0]
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const item = params[0]
+        const value = typeof item.value === 'number' ? item.value : (item.data?.value ?? 0)
         return `<div style="padding: 4px 8px;">
-          <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
-          <div><span style="display:inline-block;width:8px;height:8px;background:#8B4513;border-radius:50%;margin-right:6px;"></span>品鉴：${data.value} 款</div>
+          <div style="font-weight: 600; margin-bottom: 4px;">${item.name}</div>
+          <div style="display:flex;align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;background:#8B4513;border-radius:50%;margin-right:6px;"></span>
+            <span>品鉴：<strong>${value}</strong> 款</span>
+          </div>
         </div>`
       }
     },
     grid: {
-      left: '8%',
+      left: '10%',
       right: '8%',
-      top: '15%',
-      bottom: '12%'
+      top: '12%',
+      bottom: '15%'
     },
     xAxis: {
       type: 'category',
-      data: statsStore.monthlyTrend.months,
+      data: months,
       axisLine: {
         lineStyle: {
           color: 'rgba(255, 255, 255, 0.15)'
@@ -203,7 +209,7 @@ const initTrendChart = () => {
     series: [
       {
         type: 'line',
-        data: statsStore.monthlyTrend.counts,
+        data: counts,
         smooth: true,
         symbol: 'circle',
         symbolSize: 8,
@@ -224,6 +230,17 @@ const initTrendChart = () => {
             { offset: 0, color: 'rgba(139, 69, 19, 0.25)' },
             { offset: 1, color: 'rgba(139, 69, 19, 0.02)' }
           ])
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: 'rgba(255, 255, 255, 0.8)',
+          fontSize: 11,
+          fontWeight: 600,
+          formatter: (params: any) => {
+            const v = typeof params.value === 'number' ? params.value : (params.data?.value ?? 0)
+            return v > 0 ? String(v) : ''
+          }
         }
       }
     ]
@@ -238,11 +255,15 @@ const initTypeChart = () => {
 
   typeChart = echarts.init(typeChartRef.value, undefined, { renderer: 'svg' })
 
-  const pieData = statsStore.typeDistribution.types.map((name, index) => ({
-    value: statsStore.typeDistribution.counts[index],
+  const types = statsStore.typeDistribution.types
+  const counts = statsStore.typeDistribution.counts
+  const colors = statsStore.typeDistribution.colors
+
+  const pieData = types.map((name, index) => ({
+    value: counts[index],
     name,
     itemStyle: {
-      color: statsStore.typeDistribution.colors[index]
+      color: colors[index]
     }
   }))
 
@@ -259,28 +280,38 @@ const initTypeChart = () => {
       },
       formatter: (params: any) => {
         if (!params) return ''
+        const value = typeof params.value === 'number' ? params.value : 0
+        const percent = params.percent != null ? params.percent : 0
         return `<div style="padding: 4px 8px;">
           <div style="font-weight: 600; margin-bottom: 4px;">${params.name}</div>
-          <div><span style="display:inline-block;width:8px;height:8px;background:${params.color};border-radius:50%;margin-right:6px;"></span>数量：${params.value} 款 (${params.percent}%)</div>
+          <div style="display:flex;align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;background:${params.color};border-radius:50%;margin-right:6px;"></span>
+            <span>数量：<strong>${value}</strong> 款 (${percent}%)</span>
+          </div>
         </div>`
       }
     },
     legend: {
       orient: 'vertical',
-      right: '5%',
+      right: '3%',
       top: 'center',
       itemGap: 10,
       textStyle: {
         color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 11
       },
-      icon: 'circle'
+      icon: 'circle',
+      formatter: (name: string) => {
+        const idx = types.indexOf(name)
+        const count = idx >= 0 ? counts[idx] : 0
+        return `${name}  ${count}`
+      }
     },
     series: [
       {
         type: 'pie',
         radius: ['40%', '65%'],
-        center: ['32%', '50%'],
+        center: ['30%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 6,
@@ -295,7 +326,11 @@ const initTypeChart = () => {
             show: true,
             fontSize: 13,
             fontWeight: 'bold',
-            color: '#fff'
+            color: '#fff',
+            formatter: (params: any) => {
+              const v = typeof params.value === 'number' ? params.value : 0
+              return `${params.name}\n${v}款`
+            }
           },
           itemStyle: {
             shadowBlur: 10,
@@ -320,6 +355,10 @@ const initRegionChart = () => {
 
   regionChart = echarts.init(regionChartRef.value, undefined, { renderer: 'svg' })
 
+  const regions = statsStore.regionStatsBar.regions
+  const countries = statsStore.regionStatsBar.countries
+  const counts = statsStore.regionStatsBar.counts
+
   const option: echarts.EChartsCoreOption = {
     tooltip: {
       trigger: 'axis',
@@ -335,24 +374,26 @@ const initRegionChart = () => {
         fontSize: 12
       },
       formatter: (params: any) => {
-        if (!params || !params.length) return ''
-        const data = params[0]
-        const regions = statsStore.regionStatsBar.regions
-        const countries = statsStore.regionStatsBar.countries
-        const idx = regions.indexOf(data.name)
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const item = params[0]
+        const idx = regions.indexOf(item.name)
         const country = idx >= 0 ? countries[idx] : ''
+        const value = typeof item.value === 'number' ? item.value : (item.data?.value ?? 0)
         return `<div style="padding: 4px 8px;">
-          <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
+          <div style="font-weight: 600; margin-bottom: 4px;">${item.name}</div>
           ${country ? `<div style="color: #999; font-size: 11px; margin-bottom: 4px;">${country}</div>` : ''}
-          <div><span style="display:inline-block;width:8px;height:8px;background:#8B4513;border-radius:50%;margin-right:6px;"></span>品鉴：${data.value} 款</div>
+          <div style="display:flex;align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;background:#8B4513;border-radius:50%;margin-right:6px;"></span>
+            <span>品鉴：<strong>${value}</strong> 款</span>
+          </div>
         </div>`
       }
     },
     grid: {
       left: '3%',
-      right: '14%',
+      right: '12%',
       bottom: '5%',
-      top: '10%',
+      top: '8%',
       containLabel: true
     },
     xAxis: {
@@ -377,7 +418,7 @@ const initRegionChart = () => {
     },
     yAxis: {
       type: 'category',
-      data: statsStore.regionStatsBar.regions,
+      data: regions,
       axisLine: {
         lineStyle: {
           color: 'rgba(255, 255, 255, 0.15)'
@@ -389,7 +430,7 @@ const initRegionChart = () => {
       axisLabel: {
         color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 11,
-        width: 65,
+        width: 70,
         overflow: 'truncate',
         ellipsis: '...'
       }
@@ -397,7 +438,7 @@ const initRegionChart = () => {
     series: [
       {
         type: 'bar',
-        data: statsStore.regionStatsBar.counts,
+        data: counts,
         barWidth: '55%',
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
@@ -420,7 +461,10 @@ const initRegionChart = () => {
           color: 'rgba(255, 255, 255, 0.9)',
           fontWeight: 600,
           fontSize: 11,
-          formatter: '{c}款'
+          formatter: (params: any) => {
+            const v = typeof params.value === 'number' ? params.value : (params.data?.value ?? 0)
+            return `${v}款`
+          }
         }
       }
     ]
@@ -430,17 +474,26 @@ const initRegionChart = () => {
 }
 
 const initCharts = () => {
-  nextTick(() => {
-    if (statsStore.monthlyTrend.months.length > 0) {
-      initTrendChart()
+  const tryInit = (attempt = 0) => {
+    if (attempt > 10) return
+    const refsReady = trendChartRef.value || typeChartRef.value || regionChartRef.value
+    if (!refsReady) {
+      setTimeout(() => tryInit(attempt + 1), 50)
+      return
     }
-    if (statsStore.typeDistribution.types.length > 0) {
-      initTypeChart()
-    }
-    if (statsStore.regionStatsBar.regions.length > 0) {
-      initRegionChart()
-    }
-  })
+    nextTick(() => {
+      if (statsStore.monthlyTrend.months.length > 0) {
+        initTrendChart()
+      }
+      if (statsStore.typeDistribution.types.length > 0) {
+        initTypeChart()
+      }
+      if (statsStore.regionStatsBar.regions.length > 0) {
+        initRegionChart()
+      }
+    })
+  }
+  tryInit()
 }
 
 const handleResize = () => {
@@ -468,6 +521,20 @@ watch(
   () => statsStore.keyMetrics,
   () => {
     stats.value = statsStore.keyMetrics
+  },
+  { deep: true }
+)
+
+watch(
+  () => [
+    statsStore.monthlyTrend.months.length,
+    statsStore.typeDistribution.types.length,
+    statsStore.regionStatsBar.regions.length
+  ],
+  () => {
+    nextTick(() => {
+      initCharts()
+    })
   },
   { deep: true }
 )
@@ -526,8 +593,7 @@ onUnmounted(() => {
 }
 
 .section-icon {
-  font-size: 18px;
-  line-height: 1;
+  flex-shrink: 0;
 }
 
 .section-title .subtitle {
